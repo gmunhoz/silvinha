@@ -59,12 +59,15 @@ int lastRenderedTime = -1;
 
 int currentWeight = 0;
 int lastRenderedWeight = -1;
+int lastPlottedWeight = -1;
 
 int currentFlow = 0;
 int lastRenderedFlow = -1;
+int lastPlottedFlow = -1;
 
 int currentTemperature = 0;
 int lastRenderedTemperature = -1;
+int lastPlottedTemperature = -1;
 
 byte xAxisHeight = 0;
 byte minX = 0;
@@ -75,6 +78,8 @@ byte minY = 0;
 byte maxY = 100;
 
 bool running = false;
+
+byte numberOfItems = 0;
 
 
 /* * * * * * * * * * * * * * * * * * * * *
@@ -187,7 +192,7 @@ void fastLoop() {
   }
 
   drawTimePanel();
-    
+  
   checkForActions();
 }
 
@@ -195,6 +200,12 @@ void oneSecondLoop() {
   if (running) {
     updateWeight();
     updateFlow();
+
+    plotItem(currentTime, currentTemperature, currentFlow, currentWeight);
+
+    if (currentTime >= maxX) {
+      toggleRunning();
+    }
   }
   
   updateTemperature();
@@ -213,21 +224,23 @@ void oneSecondLoop() {
  
 void checkForActions() {
   if (digitalRead(BUTTON_PIN) == HIGH) {
-    buttonPressed();
+    toggleRunning();
     delay(500);
   } 
 }
 
-void buttonPressed() {
-  Serial.println("APERTOU EIN");
-  
+void toggleRunning() {
   if (!running) {
+    clearGraph();
+    
     lastTimerUpdate = millis();
     
     currentTime = 0;
     currentWeight = 0;
     currentFlow = 0;
     currentTemperature = 0;
+
+    numberOfItems = 0;
   } 
 
   running = !running;
@@ -322,6 +335,79 @@ String getWeightText() {
 
 void fillCenteredRect(float x, float y, float width, float height, unsigned short color) {
   display.fillRect(x - (width / 2), y - (height / 2), width, height, color);
+}
+
+void plotItem(byte seconds, byte temperature, byte flowRate, byte weight) {
+  plotTemperature(seconds, temperature);
+  plotFlowRate(seconds, flowRate);
+  plotWeight(seconds, weight);
+  numberOfItems++;
+}
+
+void plotTemperature(byte seconds, byte value) {
+  if (seconds > 0) {
+    byte x1 = seconds - 1;
+    float y1 = lastPlottedTemperature;
+    byte x2 = seconds;
+    float y2 = value;
+    plotData(x1, y1, x2, y2, RED);
+  }
+
+  lastPlottedTemperature = value;
+}
+
+void plotFlowRate(byte seconds, byte value) {
+  if (seconds > 0) {
+    byte x1 = seconds - 1;
+    float y1 = lastPlottedFlow * 10;
+    byte x2 = seconds;
+    float y2 = value * 10;
+    plotData(x1, y1, x2, y2, CYAN);
+  }
+
+  lastPlottedFlow = value;
+}
+
+void plotWeight(byte seconds, byte value) {
+  if (seconds > 0) {
+    byte x1 = seconds - 1;
+    float y1 = lastPlottedWeight;
+    byte x2 = seconds;
+    float y2 = value;
+    plotData(x1, y1, x2, y2, YELLOW);
+  }
+
+  lastPlottedWeight = value;
+}
+
+void plotData(float x1, float y1, float x2, float y2, int color) {
+  float px =  graphXtoScreenX(x1);
+  float py =  graphYtoScreenY(y1);
+  
+  float x =  graphXtoScreenX(x2);
+  float y =  graphYtoScreenY(y2);
+  
+  display.drawLine(px, py, x, y, color);
+  display.drawLine(px, py - 1, x, y - 1, color);
+  display.drawLine(px, py + 1, x, y + 1, color);
+}
+
+double graphXtoScreenX(double x) {
+  float graphWidth = DISPLAY_WIDTH;
+  float plottingWidth = graphWidth - yAxisWidth - 2;
+  return ((x - minY) * (plottingWidth) / (maxX - minX)) + yAxisWidth;
+}
+
+double graphYtoScreenY(double y) {
+  float graphHeight = DISPLAY_HEIGHT - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT;
+  float graphY = DISPLAY_HEIGHT - BOTTOM_BAR_HEIGHT;
+  float plottingHeight = (graphHeight - xAxisHeight - 2);
+  return ((y - minY) * (graphY - plottingHeight - graphY) / (maxY - minY) + graphY) - xAxisHeight - 2;
+}
+
+void clearGraph() {
+  float graphHeight = DISPLAY_HEIGHT - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT;
+  display.fillRect(yAxisWidth, TOP_BAR_HEIGHT, DISPLAY_WIDTH - yAxisWidth - 1, graphHeight - xAxisHeight, BLACK);
 }
 
 void drawText(const String &text, float x, float y, byte size, byte alignment, unsigned short color) {
