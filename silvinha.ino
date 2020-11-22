@@ -21,6 +21,7 @@
 #define CENTERED      3
 
 // Pins
+#define BUTTON_PIN  2
 #define TFT_DC_PIN  8
 #define TFT_RST_PIN 9
 #define TFT_CS_PIN  10
@@ -32,19 +33,21 @@
 #define BOTTOM_BAR_HEIGHT  40
 #define TITLE_BAR_HEIGHT   10
 
+
+/* * * * * * * * * * * * * * * * * * * * *
+ *                                       *
+ *  VARIABLES                            *
+ *                                       *
+ * * * * * * * * * * * * * * * * * * * * */
+
 Adafruit_ST7735 display = Adafruit_ST7735(TFT_CS_PIN, TFT_DC_PIN, TFT_RST_PIN);
 
-byte xAxisHeight = 0;
-byte minX = 0;
-byte maxX = 40;
+unsigned long poweredAt = millis();
+unsigned long millisecondsSincePowered = 0;
+int secondsSincePowered = 0;
 
-byte yAxisWidth = 0;
-byte minY = 0;
-byte maxY = 100;
-
-unsigned long startTime = millis();
-unsigned long millisecondsSinceStartTime = 0;
-int secondsSinceStartTime = 0;
+unsigned long lastTimerUpdate = millis();
+unsigned long currentTimerUpdate;
 
 int currentTime = 0;
 int lastRenderedTime = -1;
@@ -58,6 +61,17 @@ int lastRenderedFlow = -1;
 int currentTemperature = 0;
 int lastRenderedTemperature = -1;
 
+byte xAxisHeight = 0;
+byte minX = 0;
+byte maxX = 40;
+
+byte yAxisWidth = 0;
+byte minY = 0;
+byte maxY = 100;
+
+bool running = false;
+
+
 /* * * * * * * * * * * * * * * * * * * * *
  *                                       *
  *  SETUP                                *
@@ -66,9 +80,14 @@ int lastRenderedTemperature = -1;
  
 void setup() {
   Serial.begin(9600);
+  setupPins();
   setupDisplay();
   setupLayout();
   delay(250);
+}
+
+void setupPins() {
+  pinMode(BUTTON_PIN, INPUT);  
 }
 
 void setupDisplay() {
@@ -146,35 +165,35 @@ void drawGraph(float x, float y, float width, float height, unsigned short color
  * * * * * * * * * * * * * * * * * * * * */
  
 void loop() {
-  millisecondsSinceStartTime = millis() - startTime;
-  int seconds = millisecondsSinceStartTime / 1000;
+  millisecondsSincePowered = millis() - poweredAt;
+  int seconds = millisecondsSincePowered / 1000;
 
-  if (seconds > secondsSinceStartTime) {
-    secondsSinceStartTime = seconds;
+  if (seconds > secondsSincePowered) {
+    secondsSincePowered = seconds;
     oneSecondLoop();
-
-    if (seconds % 2 == 0) {
-      twoSecondsLoop();
-    }
   }
 
   fastLoop();
 }
 
 void fastLoop() {
-  updateTimerPanel();
-  updateWeightPanel();
+  if (running) {
+    updateTime();
+    updateWeight();
+    updateFlow();
+  }
+
+  drawTimePanel();
+  drawWeightPanel();
+  drawFlowPanel();
+    
+  checkForActions();
 }
 
 void oneSecondLoop() {
-  updateFlowPanel();
-  updateTemperaturePanel();
+  updateTemperature();
+  drawTemperaturePanel();
 }
-
-void twoSecondsLoop() {
-  
-}
-
 
 
 /* * * * * * * * * * * * * * * * * * * * *
@@ -182,9 +201,28 @@ void twoSecondsLoop() {
  *  EVENTS                               *
  *                                       *
  * * * * * * * * * * * * * * * * * * * * */
+ 
+void checkForActions() {
+  if (digitalRead(BUTTON_PIN) == HIGH) {
+    buttonPressed();
+    delay(250);
+  } 
+}
 
+void buttonPressed() {
+  Serial.println("APERTOU EIN");
+  
+  if (!running) {
+    lastTimerUpdate = millis();
+    
+    currentTime = 0;
+    currentWeight = 0;
+    currentFlow = 0;
+    currentTemperature = 0;
+  } 
 
-
+  running = !running;
+}
  
 /* * * * * * * * * * * * * * * * * * * * *
  *                                       *
@@ -192,36 +230,77 @@ void twoSecondsLoop() {
  *                                       *
  * * * * * * * * * * * * * * * * * * * * */
 
-void updateTimerPanel() {
+void updateTime() {
+  currentTimerUpdate = millis();
+  currentTime = (currentTimerUpdate - lastTimerUpdate) / 1000;
+}
+
+void updateWeight() {
+  // TODO: read current weight
+}
+
+void updateFlow() {
+  // TODO: calculate current flow
+}
+
+void updateTemperature() {
+  // TODO: read current temperature
+}
+
+void drawTimePanel() {
   if (currentTime != lastRenderedTime) {
-    String text = "0s";
+    String text = getTimeText();
     drawText(text, DISPLAY_WIDTH / 4, TITLE_BAR_HEIGHT + (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, REGULAR_TEXT, CENTERED, WHITE, true);
     lastRenderedTime = currentTime;
   }
 }
 
-void updateWeightPanel() {
+void drawWeightPanel() {
   if (currentWeight != lastRenderedWeight) {
-    String text = "0g";
+    String text = getWeightText();
     drawText(text, DISPLAY_WIDTH - (DISPLAY_WIDTH / 4), TITLE_BAR_HEIGHT + (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, REGULAR_TEXT, CENTERED, WHITE, true);
     lastRenderedWeight = currentWeight;
   }
 }
 
-void updateFlowPanel() {
+void drawFlowPanel() {
   if (currentFlow != lastRenderedFlow) {
-    String text = "0g/s";
+    String text = getFlowText();
     drawText(text, DISPLAY_WIDTH / 4, DISPLAY_HEIGHT - (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, REGULAR_TEXT, CENTERED, WHITE, true);
     lastRenderedFlow = currentFlow;
   }
 }
 
-void updateTemperaturePanel() {
+void drawTemperaturePanel() {
   if (currentTemperature != lastRenderedTemperature) {
-    String text = "0c";
+    String text = getTemperatureText();
     drawText(text, DISPLAY_WIDTH - (DISPLAY_WIDTH / 4), DISPLAY_HEIGHT - (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, REGULAR_TEXT, CENTERED, WHITE, true);
     lastRenderedTemperature = currentTemperature;
   }
+}
+
+String getTimeText() {
+  char text[4];
+  sprintf(text, "%01ds", currentTime);
+  return String(text);
+}
+
+String getTemperatureText() {
+  char text[4];
+  sprintf(text, "%01dc", currentTemperature);
+  return String(text);
+}
+
+String getFlowText() {
+  char text[4];
+  sprintf(text, "%01dg/s", currentFlow);
+  return String(text);
+}
+
+String getWeightText() {
+  char text[4];
+  sprintf(text, "%01dg", currentWeight);
+  return String(text);
 }
 
 void drawText(const String &text, float x, float y, byte size, byte alignment, unsigned short color, bool background) {
