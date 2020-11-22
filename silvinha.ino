@@ -42,6 +42,16 @@ byte yAxisWidth = 0;
 byte minY = 0;
 byte maxY = 100;
 
+double startTime = millis();
+double millisecondsSinceStartTime = 0;
+int secondsSinceStartTime = 0;
+
+/* * * * * * * * * * * * * * * * * * * * *
+ *                                       *
+ *  SETUP                                *
+ *                                       *
+ * * * * * * * * * * * * * * * * * * * * */
+ 
 void setup() {
   Serial.begin(9600);
   setupDisplay();
@@ -116,6 +126,48 @@ void drawGraph(float x, float y, float width, float height, unsigned short color
   drawText(maxYLabel, x + yAxisWidth, y - height + labelPadding, SMALL_TEXT, RIGHT_ALIGNED, BLACK);
 }
 
+
+/* * * * * * * * * * * * * * * * * * * * *
+ *                                       *
+ *  LOOPS                                *
+ *                                       *
+ * * * * * * * * * * * * * * * * * * * * */
+ 
+void loop() {
+  millisecondsSinceStartTime = millis() - startTime;
+  int seconds = millisecondsSinceStartTime / 1000;
+  
+  if (seconds > secondsSinceStartTime) {
+    secondsSinceStartTime = seconds;
+    oneSecondLoop();
+
+    if (seconds % 2 == 0) {
+      twoSecondsLoop();
+    }
+  }
+
+  fastLoop();
+}
+
+void fastLoop() {
+  
+}
+
+void oneSecondLoop() {
+  
+}
+
+void twoSecondsLoop() {
+  
+}
+
+ 
+/* * * * * * * * * * * * * * * * * * * * *
+ *                                       *
+ *  HELPERS                              *
+ *                                       *
+ * * * * * * * * * * * * * * * * * * * * */
+ 
 void drawText(const String &buf, float x, float y, byte size, byte alignment, unsigned short color)
 {
   int16_t x1, y1;
@@ -141,5 +193,3 @@ void drawText(const String &buf, float x, float y, byte size, byte alignment, un
 
   display.print(buf);
 }
-
-void loop() {}
