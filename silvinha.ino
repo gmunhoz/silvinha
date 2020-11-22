@@ -42,9 +42,21 @@ byte yAxisWidth = 0;
 byte minY = 0;
 byte maxY = 100;
 
-double startTime = millis();
-double millisecondsSinceStartTime = 0;
+unsigned long startTime = millis();
+unsigned long millisecondsSinceStartTime = 0;
 int secondsSinceStartTime = 0;
+
+int currentTime = 0;
+int lastRenderedTime = -1;
+
+int currentWeight = 0;
+int lastRenderedWeight = -1;
+
+int currentFlow = 0;
+int lastRenderedFlow = -1;
+
+int currentTemperature = 0;
+int lastRenderedTemperature = -1;
 
 /* * * * * * * * * * * * * * * * * * * * *
  *                                       *
@@ -83,7 +95,7 @@ void setupLayout() {
 void drawPanel(float x, float y, float width, float height, String title, unsigned short color) {
   display.drawRect(x, y, width, height, color);
   display.fillRect(x, y, width, TITLE_BAR_HEIGHT, color);
-  drawText(title, x + (width / 2), y + (TITLE_BAR_HEIGHT / 2), SMALL_TEXT, CENTERED, BLACK);
+  drawText(title, x + (width / 2), y + (TITLE_BAR_HEIGHT / 2), SMALL_TEXT, CENTERED, BLACK, false);
 }
 
 void drawGraph(float x, float y, float width, float height, unsigned short color) {
@@ -115,15 +127,15 @@ void drawGraph(float x, float y, float width, float height, unsigned short color
 
   // X Axis
   display.fillRect(x, y - xAxisHeight, width, xAxisHeight, color);
-  drawText(minXLabel, x + yAxisWidth + labelPadding, y - xAxisHeight + labelPadding, SMALL_TEXT, LEFT_ALIGNED, BLACK);
-  drawText(mediumXLabel, yAxisWidth + (width - yAxisWidth) / 2 + x, y - (xAxisHeight / 2), SMALL_TEXT, CENTERED, BLACK);
-  drawText(maxXLabel, x + width, y - xAxisHeight + labelPadding, SMALL_TEXT, RIGHT_ALIGNED, BLACK); // TODO: fix this rataria
+  drawText(minXLabel, x + yAxisWidth + labelPadding, y - xAxisHeight + labelPadding, SMALL_TEXT, LEFT_ALIGNED, BLACK, false);
+  drawText(mediumXLabel, yAxisWidth + (width - yAxisWidth) / 2 + x, y - (xAxisHeight / 2), SMALL_TEXT, CENTERED, BLACK, false);
+  drawText(maxXLabel, x + width, y - xAxisHeight + labelPadding, SMALL_TEXT, RIGHT_ALIGNED, BLACK, false); // TODO: fix this rataria
   
   // Draw Y Axis
   display.fillRect(x, y - height, yAxisWidth, height - xAxisHeight, color);
-  drawText(minYLabel, x + yAxisWidth, y - xAxisHeight - textHeight, SMALL_TEXT, RIGHT_ALIGNED, BLACK);
-  drawText(mediumYLabel, x + yAxisWidth, y - (height / 2) - xAxisHeight + (textHeight / 2), SMALL_TEXT, RIGHT_ALIGNED, BLACK);
-  drawText(maxYLabel, x + yAxisWidth, y - height + labelPadding, SMALL_TEXT, RIGHT_ALIGNED, BLACK);
+  drawText(minYLabel, x + yAxisWidth, y - xAxisHeight - textHeight, SMALL_TEXT, RIGHT_ALIGNED, BLACK, false);
+  drawText(mediumYLabel, x + yAxisWidth, y - (height / 2) - xAxisHeight + (textHeight / 2), SMALL_TEXT, RIGHT_ALIGNED, BLACK, false);
+  drawText(maxYLabel, x + yAxisWidth, y - height + labelPadding, SMALL_TEXT, RIGHT_ALIGNED, BLACK, false);
 }
 
 
@@ -136,7 +148,7 @@ void drawGraph(float x, float y, float width, float height, unsigned short color
 void loop() {
   millisecondsSinceStartTime = millis() - startTime;
   int seconds = millisecondsSinceStartTime / 1000;
-  
+
   if (seconds > secondsSinceStartTime) {
     secondsSinceStartTime = seconds;
     oneSecondLoop();
@@ -150,16 +162,28 @@ void loop() {
 }
 
 void fastLoop() {
-  
+  updateTimerPanel();
+  updateWeightPanel();
 }
 
 void oneSecondLoop() {
-  
+  updateFlowPanel();
+  updateTemperaturePanel();
 }
 
 void twoSecondsLoop() {
   
 }
+
+
+
+/* * * * * * * * * * * * * * * * * * * * *
+ *                                       *
+ *  EVENTS                               *
+ *                                       *
+ * * * * * * * * * * * * * * * * * * * * */
+
+
 
  
 /* * * * * * * * * * * * * * * * * * * * *
@@ -167,29 +191,68 @@ void twoSecondsLoop() {
  *  HELPERS                              *
  *                                       *
  * * * * * * * * * * * * * * * * * * * * */
- 
-void drawText(const String &buf, float x, float y, byte size, byte alignment, unsigned short color)
-{
+
+void updateTimerPanel() {
+  if (currentTime != lastRenderedTime) {
+    String text = "0s";
+    drawText(text, DISPLAY_WIDTH / 4, TITLE_BAR_HEIGHT + (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, REGULAR_TEXT, CENTERED, WHITE, true);
+    lastRenderedTime = currentTime;
+  }
+}
+
+void updateWeightPanel() {
+  if (currentWeight != lastRenderedWeight) {
+    String text = "0g";
+    drawText(text, DISPLAY_WIDTH - (DISPLAY_WIDTH / 4), TITLE_BAR_HEIGHT + (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, REGULAR_TEXT, CENTERED, WHITE, true);
+    lastRenderedWeight = currentWeight;
+  }
+}
+
+void updateFlowPanel() {
+  if (currentFlow != lastRenderedFlow) {
+    String text = "0g/s";
+    drawText(text, DISPLAY_WIDTH / 4, DISPLAY_HEIGHT - (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, REGULAR_TEXT, CENTERED, WHITE, true);
+    lastRenderedFlow = currentFlow;
+  }
+}
+
+void updateTemperaturePanel() {
+  if (currentTemperature != lastRenderedTemperature) {
+    String text = "0c";
+    drawText(text, DISPLAY_WIDTH - (DISPLAY_WIDTH / 4), DISPLAY_HEIGHT - (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, REGULAR_TEXT, CENTERED, WHITE, true);
+    lastRenderedTemperature = currentTemperature;
+  }
+}
+
+void drawText(const String &text, float x, float y, byte size, byte alignment, unsigned short color, bool background) {
   int16_t x1, y1;
   uint16_t w, h;
   
   display.setTextSize(size);             
   display.setTextColor(color);      
-  display.getTextBounds(buf, x, y, &x1, &y1, &w, &h);
+  display.getTextBounds(text, x, y, &x1, &y1, &w, &h);
 
   switch(alignment) {
     case 3: 
       // Centered
-      display.setCursor(x - w / 2, y - h / 2);
+      x1 = x - w / 2;
+      y1 = y - h / 2;
       break; 
     case 2: 
       // Right
-      display.setCursor(x - w, y);
+      x1 = x - w;
+      y1 = y;
       break;
     default: 
       // Left
-      display.setCursor(x, y);
+      x1 = x;
+      y1 = y;
   }
 
-  display.print(buf);
+  if (background) {
+    display.fillRect(x1, y1, w, h, BLACK);
+  }
+
+  display.setCursor(x1, y1);
+  display.print(text);
 }
