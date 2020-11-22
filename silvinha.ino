@@ -1,6 +1,8 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7735.h>
+#include <EEPROM.h>
 #include <max6675.h>
+#include <SD.h>
 #include <SPI.h>
 #include <Wire.h>
 
@@ -24,6 +26,7 @@
 // Pins
 #define BUTTON_PIN           2
 #define WATER_SENSOR_PIN     3
+#define CARD_READER_CS_PIN   4
 #define THERMOCOUPLE_CS_PIN  5
 #define THERMOCOUPLE_SCK_PIN 6
 #define THERMOCOUPLE_SO_PIN  7
@@ -37,6 +40,9 @@
 #define TOP_BAR_HEIGHT     40
 #define BOTTOM_BAR_HEIGHT  40
 #define TITLE_BAR_HEIGHT   10
+
+// EEPROM
+#define NUMBER_OF_BREWS_ADDRESS 0
 
 
 /* * * * * * * * * * * * * * * * * * * * *
@@ -81,7 +87,9 @@ byte maxY = 100;
 bool running = false;
 bool lowWaterLevel = false;
 
-byte numberOfItems = 0;
+int numberOfBrews = 0;
+
+File brewFile;
 
 
 /* * * * * * * * * * * * * * * * * * * * *
@@ -94,7 +102,10 @@ void setup() {
   Serial.begin(9600);
   setupPins();
   setupDisplay();
+  setupCardReader();
+  setupInitialState();
   drawLayout();
+  plotPreviousBrewFromSD();
   delay(250);
 }
 
@@ -109,6 +120,18 @@ void setupDisplay() {
   display.setTextWrap(false);
 }
 
+void setupCardReader() {
+  if (!SD.begin(CARD_READER_CS_PIN)) {
+    Serial.println("Card reader initialization failed!");
+    while (1);
+  }
+}
+
+void setupInitialState() {
+  numberOfBrews = max(readIntFromEEPROM(NUMBER_OF_BREWS_ADDRESS), 0);
+  Serial.print("NUMBER OF BREWS: ");
+  Serial.println(numberOfBrews);
+}
 
 /* * * * * * * * * * * * * * * * * * * * *
  *                                       *
@@ -149,6 +172,7 @@ void oneSecondLoop() {
     updateFlow();
 
     plotItem(currentTime, currentTemperature, currentFlow, currentWeight);
+    writeItemToSD(currentTime, currentTemperature, currentFlow, currentWeight);
 
     if (currentTime >= maxX) {
       toggleRunning();
@@ -170,13 +194,13 @@ void oneSecondLoop() {
  * * * * * * * * * * * * * * * * * * * * */
  
 void checkForInputs() {
-  bool currentWaterLevel = digitalRead(WATER_SENSOR_PIN) == LOW;
-
-  // Waits for the current brew to finish before displaying the water level warning
-  if (lowWaterLevel != currentWaterLevel && !running) {
-    toggleLowWaterLevel();
-    delay(500);
-  }
+//  bool currentWaterLevel = digitalRead(WATER_SENSOR_PIN) == LOW;
+//
+//  // Waits for the current brew to finish before displaying the water level warning
+//  if (lowWaterLevel != currentWaterLevel && !running) {
+//    toggleLowWaterLevel();
+//    delay(500);
+//  }
 
   bool buttonPressed = digitalRead(BUTTON_PIN) == HIGH;
 
@@ -207,6 +231,9 @@ void resetPreviousRenderedValues() {
 
 void toggleRunning() {
   if (!running) {
+    String path = getBrewFileName(numberOfBrews);
+    brewFile = SD.open(path, FILE_WRITE);
+    
     clearGraph();
     
     lastTimerUpdate = millis();
@@ -215,12 +242,17 @@ void toggleRunning() {
     currentWeight = 0;
     currentFlow = 0;
     currentTemperature = 0;
+    
+  } else {
+    brewFile.close();
 
-    numberOfItems = 0;
-  } 
+    numberOfBrews++;
+    writeIntIntoEEPROM(NUMBER_OF_BREWS_ADDRESS, numberOfBrews);
+  }
 
   running = !running;
 }
+
 
 
 /* * * * * * * * * * * * * * * * * * * * *
@@ -342,7 +374,6 @@ void plotItem(byte seconds, byte temperature, byte flowRate, byte weight) {
   plotTemperature(seconds, temperature);
   plotFlowRate(seconds, flowRate);
   plotWeight(seconds, weight);
-  numberOfItems++;
 }
 
 void plotTemperature(byte seconds, byte value) {
@@ -391,6 +422,32 @@ void plotData(float x1, float y1, float x2, float y2, int color) {
   display.drawLine(px, py, x, y, color);
   display.drawLine(px, py - 1, x, y - 1, color);
   display.drawLine(px, py + 1, x, y + 1, color);
+}
+
+void plotPreviousBrewFromSD() {
+  if (numberOfBrews > 0) {
+    plotBrewFromSD(numberOfBrews - 1);
+  }
+}
+
+void plotBrewFromSD(int brewNumber) {
+  String path = getBrewFileName(brewNumber);
+
+  Serial.print("PATH: ");
+  Serial.println(path);
+  
+  brewFile = SD.open(path);
+
+  while (brewFile.available()) {
+    byte seconds = brewFile.parseInt();
+    byte temperature = brewFile.parseInt();
+    byte flowRate = brewFile.parseInt();
+    byte weight = brewFile.parseInt();
+
+    plotItem(seconds, temperature, flowRate, weight);
+  }
+
+  brewFile.close();
 }
 
  void clearGraph() {
@@ -447,7 +504,6 @@ void updateFlow() {
 
 void updateTemperature() {
   currentTemperature = thermocouple.readCelsius();
-  Serial.println(currentTemperature);
 }
 
 String getTimeText() {
@@ -474,6 +530,12 @@ String getWeightText() {
   return String(text);
 }
 
+String getBrewFileName(int brewNumber) {
+  char text[10];
+  sprintf(text, "%05d.txt", brewNumber);
+  return String(text);
+}
+
 double graphXtoScreenX(double x) {
   float graphWidth = DISPLAY_WIDTH;
   float plottingWidth = graphWidth - yAxisWidth - 2;
@@ -485,4 +547,21 @@ double graphYtoScreenY(double y) {
   float graphY = DISPLAY_HEIGHT - BOTTOM_BAR_HEIGHT;
   float plottingHeight = (graphHeight - xAxisHeight - 2);
   return ((y - minY) * (graphY - plottingHeight - graphY) / (maxY - minY) + graphY) - xAxisHeight - 2;
+}
+
+void writeItemToSD(byte seconds, byte temperature, byte flowRate, byte weight) {
+  char text[15];
+  sprintf(text, "%03d,%03d,%03d,%03d", seconds, temperature, flowRate, weight);
+  brewFile.println(text);
+}
+
+int readIntFromEEPROM(int address)
+{
+  return (EEPROM.read(address) << 8) + EEPROM.read(address + 1);
+}
+
+void writeIntIntoEEPROM(int address, int number)
+{ 
+  EEPROM.write(address, number >> 8);
+  EEPROM.write(address + 1, number & 0xFF);
 }
