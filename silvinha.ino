@@ -92,7 +92,7 @@ void setup() {
   Serial.begin(9600);
   setupPins();
   setupDisplay();
-  setupLayout();
+  drawLayout();
   delay(250);
 }
 
@@ -104,67 +104,6 @@ void setupDisplay() {
   display.initR(INITR_BLACKTAB);
   display.fillScreen(BLACK);
   display.setTextWrap(false);
-}
-
-void setupLayout() {
-  float halfDisplayWidth = DISPLAY_WIDTH / 2;
-
-  // Top bar
-  drawPanel(0, 0, halfDisplayWidth, TOP_BAR_HEIGHT, "timer",  WHITE);
-  drawPanel(halfDisplayWidth, 0, halfDisplayWidth, TOP_BAR_HEIGHT, "weight", YELLOW);
-
-  // Graph
-  drawGraph(0, DISPLAY_HEIGHT - BOTTOM_BAR_HEIGHT, DISPLAY_WIDTH, DISPLAY_HEIGHT - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT, WHITE);
-
-  // Bottom bar
-  drawPanel(0, DISPLAY_HEIGHT - BOTTOM_BAR_HEIGHT, halfDisplayWidth, BOTTOM_BAR_HEIGHT, "flow", CYAN);
-  drawPanel(halfDisplayWidth, DISPLAY_HEIGHT - BOTTOM_BAR_HEIGHT, halfDisplayWidth, BOTTOM_BAR_HEIGHT, "temp", RED);
-}
-
-void drawPanel(float x, float y, float width, float height, String title, unsigned short color) {
-  display.drawRect(x, y, width, height, color);
-  display.fillRect(x, y, width, TITLE_BAR_HEIGHT, color);
-  drawText(title, x + (width / 2), y + (TITLE_BAR_HEIGHT / 2), SMALL_TEXT, CENTERED, BLACK);
-}
-
-void drawGraph(float x, float y, float width, float height, unsigned short color) {
-  uint16_t textWidth, textHeight;
-  byte labelPadding = 1;
-
-  // Prepare X Axis
-  byte mediumX = (maxX - minX) / 2 + minX;
-
-  String minXLabel = String(minX);
-  String mediumXLabel = String(mediumX);
-  String maxXLabel = String(maxX);
-
-  display.getTextBounds(maxXLabel, 0, 0, 0, 0, &textWidth, &textHeight);
-  xAxisHeight = labelPadding + textHeight + labelPadding;
-
-  // Prepare Y Axis
-  byte mediumY = (maxY - minY) / 2 + minY;
-  
-  String minYLabel = String(minY);
-  String mediumYLabel = String(mediumY);
-  String maxYLabel = String(maxY);
-
-  display.getTextBounds(maxYLabel, 0, 0, 0, 0, &textWidth, &textHeight);
-  yAxisWidth = labelPadding + textWidth + labelPadding;
-
-  // Draw frame
-  display.drawRect(x, y - height, width, height, color);
-
-  // X Axis
-  display.fillRect(x, y - xAxisHeight, width, xAxisHeight, color);
-  drawText(minXLabel, x + yAxisWidth + labelPadding, y - xAxisHeight + labelPadding, SMALL_TEXT, LEFT_ALIGNED, BLACK);
-  drawText(mediumXLabel, yAxisWidth + (width - yAxisWidth) / 2 + x, y - (xAxisHeight / 2), SMALL_TEXT, CENTERED, BLACK);
-  drawText(maxXLabel, x + width, y - xAxisHeight + labelPadding, SMALL_TEXT, RIGHT_ALIGNED, BLACK);
-  
-  // Draw Y Axis
-  display.fillRect(x, y - height, yAxisWidth, height - xAxisHeight, color);
-  drawText(minYLabel, x + yAxisWidth, y - xAxisHeight - textHeight, SMALL_TEXT, RIGHT_ALIGNED, BLACK);
-  drawText(mediumYLabel, x + yAxisWidth, y - (height / 2) - xAxisHeight + (textHeight / 2), SMALL_TEXT, RIGHT_ALIGNED, BLACK);
-  drawText(maxYLabel, x + yAxisWidth, y - height + labelPadding, SMALL_TEXT, RIGHT_ALIGNED, BLACK);
 }
 
 
@@ -246,31 +185,72 @@ void toggleRunning() {
   running = !running;
 }
 
- 
+
 /* * * * * * * * * * * * * * * * * * * * *
  *                                       *
- *  HELPERS                              *
+ *  UI Drawing                           *
  *                                       *
  * * * * * * * * * * * * * * * * * * * * */
+ 
+void drawLayout() {
+  float halfDisplayWidth = DISPLAY_WIDTH / 2;
 
-void updateTime() {
-  currentTimerUpdate = millis();
-  currentTime = (currentTimerUpdate - lastTimerUpdate) / 1000;
+  // Top bar
+  drawPanel(0, 0, halfDisplayWidth, TOP_BAR_HEIGHT, "timer",  WHITE);
+  drawPanel(halfDisplayWidth, 0, halfDisplayWidth, TOP_BAR_HEIGHT, "weight", YELLOW);
+
+  // Graph
+  drawGraph(0, DISPLAY_HEIGHT - BOTTOM_BAR_HEIGHT, DISPLAY_WIDTH, DISPLAY_HEIGHT - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT, WHITE);
+
+  // Bottom bar
+  drawPanel(0, DISPLAY_HEIGHT - BOTTOM_BAR_HEIGHT, halfDisplayWidth, BOTTOM_BAR_HEIGHT, "flow", CYAN);
+  drawPanel(halfDisplayWidth, DISPLAY_HEIGHT - BOTTOM_BAR_HEIGHT, halfDisplayWidth, BOTTOM_BAR_HEIGHT, "temp", RED);
 }
 
-void updateWeight() {
-  // TODO: read the actual weight
-  currentWeight += rand() % 3; 
+void drawPanel(float x, float y, float width, float height, String title, unsigned short color) {
+  display.drawRect(x, y, width, height, color);
+  display.fillRect(x, y, width, TITLE_BAR_HEIGHT, color);
+  drawText(title, x + (width / 2), y + (TITLE_BAR_HEIGHT / 2), SMALL_TEXT, CENTERED, BLACK);
 }
 
-void updateFlow() {
-  // TODO: calculate the actual flow
-  currentFlow = rand() % 3 + 1;
-}
+void drawGraph(float x, float y, float width, float height, unsigned short color) {
+  uint16_t textWidth, textHeight;
+  byte labelPadding = 1;
 
-void updateTemperature() {
-  currentTemperature = thermocouple.readCelsius();
-  Serial.println(currentTemperature);
+  // Prepare X Axis
+  byte mediumX = (maxX - minX) / 2 + minX;
+
+  String minXLabel = String(minX);
+  String mediumXLabel = String(mediumX);
+  String maxXLabel = String(maxX);
+
+  display.getTextBounds(maxXLabel, 0, 0, 0, 0, &textWidth, &textHeight);
+  xAxisHeight = labelPadding + textHeight + labelPadding;
+
+  // Prepare Y Axis
+  byte mediumY = (maxY - minY) / 2 + minY;
+  
+  String minYLabel = String(minY);
+  String mediumYLabel = String(mediumY);
+  String maxYLabel = String(maxY);
+
+  display.getTextBounds(maxYLabel, 0, 0, 0, 0, &textWidth, &textHeight);
+  yAxisWidth = labelPadding + textWidth + labelPadding;
+
+  // Draw frame
+  display.drawRect(x, y - height, width, height, color);
+
+  // X Axis
+  display.fillRect(x, y - xAxisHeight, width, xAxisHeight, color);
+  drawText(minXLabel, x + yAxisWidth + labelPadding, y - xAxisHeight + labelPadding, SMALL_TEXT, LEFT_ALIGNED, BLACK);
+  drawText(mediumXLabel, yAxisWidth + (width - yAxisWidth) / 2 + x, y - (xAxisHeight / 2), SMALL_TEXT, CENTERED, BLACK);
+  drawText(maxXLabel, x + width, y - xAxisHeight + labelPadding, SMALL_TEXT, RIGHT_ALIGNED, BLACK);
+  
+  // Draw Y Axis
+  display.fillRect(x, y - height, yAxisWidth, height - xAxisHeight, color);
+  drawText(minYLabel, x + yAxisWidth, y - xAxisHeight - textHeight, SMALL_TEXT, RIGHT_ALIGNED, BLACK);
+  drawText(mediumYLabel, x + yAxisWidth, y - (height / 2) - xAxisHeight + (textHeight / 2), SMALL_TEXT, RIGHT_ALIGNED, BLACK);
+  drawText(maxYLabel, x + yAxisWidth, y - height + labelPadding, SMALL_TEXT, RIGHT_ALIGNED, BLACK);
 }
 
 void drawTimePanel() {
@@ -307,30 +287,6 @@ void drawTemperaturePanel() {
     drawText(text, DISPLAY_WIDTH - (DISPLAY_WIDTH / 4), DISPLAY_HEIGHT - (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, REGULAR_TEXT, CENTERED, WHITE);
     lastRenderedTemperature = currentTemperature;
   }
-}
-
-String getTimeText() {
-  char text[4];
-  sprintf(text, "%01ds", currentTime);
-  return String(text);
-}
-
-String getTemperatureText() {
-  char text[4];
-  sprintf(text, "%01dc", currentTemperature);
-  return String(text);
-}
-
-String getFlowText() {
-  char text[4];
-  sprintf(text, "%01dg/s", currentFlow);
-  return String(text);
-}
-
-String getWeightText() {
-  char text[4];
-  sprintf(text, "%01dg", currentWeight);
-  return String(text);
 }
 
 void fillCenteredRect(float x, float y, float width, float height, unsigned short color) {
@@ -392,20 +348,7 @@ void plotData(float x1, float y1, float x2, float y2, int color) {
   display.drawLine(px, py + 1, x, y + 1, color);
 }
 
-double graphXtoScreenX(double x) {
-  float graphWidth = DISPLAY_WIDTH;
-  float plottingWidth = graphWidth - yAxisWidth - 2;
-  return ((x - minY) * (plottingWidth) / (maxX - minX)) + yAxisWidth;
-}
-
-double graphYtoScreenY(double y) {
-  float graphHeight = DISPLAY_HEIGHT - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT;
-  float graphY = DISPLAY_HEIGHT - BOTTOM_BAR_HEIGHT;
-  float plottingHeight = (graphHeight - xAxisHeight - 2);
-  return ((y - minY) * (graphY - plottingHeight - graphY) / (maxY - minY) + graphY) - xAxisHeight - 2;
-}
-
-void clearGraph() {
+ void clearGraph() {
   float graphHeight = DISPLAY_HEIGHT - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT;
   display.fillRect(yAxisWidth, TOP_BAR_HEIGHT, DISPLAY_WIDTH - yAxisWidth - 1, graphHeight - xAxisHeight, BLACK);
 }
@@ -433,4 +376,68 @@ void drawText(const String &text, float x, float y, byte size, byte alignment, u
   }
   
   display.print(text);
+}
+
+
+/* * * * * * * * * * * * * * * * * * * * *
+ *                                       *
+ *  HELPERS                              *
+ *                                       *
+ * * * * * * * * * * * * * * * * * * * * */
+
+void updateTime() {
+  currentTimerUpdate = millis();
+  currentTime = (currentTimerUpdate - lastTimerUpdate) / 1000;
+}
+
+void updateWeight() {
+  // TODO: read the actual weight
+  currentWeight += rand() % 3; 
+}
+
+void updateFlow() {
+  // TODO: calculate the actual flow
+  currentFlow = rand() % 3 + 1;
+}
+
+void updateTemperature() {
+  currentTemperature = thermocouple.readCelsius();
+  Serial.println(currentTemperature);
+}
+
+String getTimeText() {
+  char text[4];
+  sprintf(text, "%01ds", currentTime);
+  return String(text);
+}
+
+String getTemperatureText() {
+  char text[4];
+  sprintf(text, "%01dc", currentTemperature);
+  return String(text);
+}
+
+String getFlowText() {
+  char text[4];
+  sprintf(text, "%01dg/s", currentFlow);
+  return String(text);
+}
+
+String getWeightText() {
+  char text[4];
+  sprintf(text, "%01dg", currentWeight);
+  return String(text);
+}
+
+double graphXtoScreenX(double x) {
+  float graphWidth = DISPLAY_WIDTH;
+  float plottingWidth = graphWidth - yAxisWidth - 2;
+  return ((x - minY) * (plottingWidth) / (maxX - minX)) + yAxisWidth;
+}
+
+double graphYtoScreenY(double y) {
+  float graphHeight = DISPLAY_HEIGHT - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT;
+  float graphY = DISPLAY_HEIGHT - BOTTOM_BAR_HEIGHT;
+  float plottingHeight = (graphHeight - xAxisHeight - 2);
+  return ((y - minY) * (graphY - plottingHeight - graphY) / (maxY - minY) + graphY) - xAxisHeight - 2;
 }
