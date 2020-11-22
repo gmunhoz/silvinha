@@ -119,7 +119,7 @@ void setupLayout() {
 void drawPanel(float x, float y, float width, float height, String title, unsigned short color) {
   display.drawRect(x, y, width, height, color);
   display.fillRect(x, y, width, TITLE_BAR_HEIGHT, color);
-  drawText(title, x + (width / 2), y + (TITLE_BAR_HEIGHT / 2), SMALL_TEXT, CENTERED, BLACK, false);
+  drawText(title, x + (width / 2), y + (TITLE_BAR_HEIGHT / 2), SMALL_TEXT, CENTERED, BLACK);
 }
 
 void drawGraph(float x, float y, float width, float height, unsigned short color) {
@@ -151,15 +151,15 @@ void drawGraph(float x, float y, float width, float height, unsigned short color
 
   // X Axis
   display.fillRect(x, y - xAxisHeight, width, xAxisHeight, color);
-  drawText(minXLabel, x + yAxisWidth + labelPadding, y - xAxisHeight + labelPadding, SMALL_TEXT, LEFT_ALIGNED, BLACK, false);
-  drawText(mediumXLabel, yAxisWidth + (width - yAxisWidth) / 2 + x, y - (xAxisHeight / 2), SMALL_TEXT, CENTERED, BLACK, false);
-  drawText(maxXLabel, x + width, y - xAxisHeight + labelPadding, SMALL_TEXT, RIGHT_ALIGNED, BLACK, false); // TODO: fix this rataria
+  drawText(minXLabel, x + yAxisWidth + labelPadding, y - xAxisHeight + labelPadding, SMALL_TEXT, LEFT_ALIGNED, BLACK);
+  drawText(mediumXLabel, yAxisWidth + (width - yAxisWidth) / 2 + x, y - (xAxisHeight / 2), SMALL_TEXT, CENTERED, BLACK);
+  drawText(maxXLabel, x + width, y - xAxisHeight + labelPadding, SMALL_TEXT, RIGHT_ALIGNED, BLACK);
   
   // Draw Y Axis
   display.fillRect(x, y - height, yAxisWidth, height - xAxisHeight, color);
-  drawText(minYLabel, x + yAxisWidth, y - xAxisHeight - textHeight, SMALL_TEXT, RIGHT_ALIGNED, BLACK, false);
-  drawText(mediumYLabel, x + yAxisWidth, y - (height / 2) - xAxisHeight + (textHeight / 2), SMALL_TEXT, RIGHT_ALIGNED, BLACK, false);
-  drawText(maxYLabel, x + yAxisWidth, y - height + labelPadding, SMALL_TEXT, RIGHT_ALIGNED, BLACK, false);
+  drawText(minYLabel, x + yAxisWidth, y - xAxisHeight - textHeight, SMALL_TEXT, RIGHT_ALIGNED, BLACK);
+  drawText(mediumYLabel, x + yAxisWidth, y - (height / 2) - xAxisHeight + (textHeight / 2), SMALL_TEXT, RIGHT_ALIGNED, BLACK);
+  drawText(maxYLabel, x + yAxisWidth, y - height + labelPadding, SMALL_TEXT, RIGHT_ALIGNED, BLACK);
 }
 
 
@@ -214,7 +214,7 @@ void oneSecondLoop() {
 void checkForActions() {
   if (digitalRead(BUTTON_PIN) == HIGH) {
     buttonPressed();
-    delay(250);
+    delay(500);
   } 
 }
 
@@ -263,7 +263,8 @@ void updateTemperature() {
 void drawTimePanel() {
   if (currentTime != lastRenderedTime) {
     String text = getTimeText();
-    drawText(text, DISPLAY_WIDTH / 4, TITLE_BAR_HEIGHT + (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, REGULAR_TEXT, CENTERED, WHITE, true);
+    fillCenteredRect(DISPLAY_WIDTH / 4, TITLE_BAR_HEIGHT + (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, (DISPLAY_WIDTH / 2) - 2, TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT - 2, BLACK);
+    drawText(text, DISPLAY_WIDTH / 4, TITLE_BAR_HEIGHT + (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, REGULAR_TEXT, CENTERED, WHITE);
     lastRenderedTime = currentTime;
   }
 }
@@ -271,7 +272,8 @@ void drawTimePanel() {
 void drawWeightPanel() {
   if (currentWeight != lastRenderedWeight) {
     String text = getWeightText();
-    drawText(text, DISPLAY_WIDTH - (DISPLAY_WIDTH / 4), TITLE_BAR_HEIGHT + (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, REGULAR_TEXT, CENTERED, WHITE, true);
+    fillCenteredRect(DISPLAY_WIDTH - (DISPLAY_WIDTH / 4), TITLE_BAR_HEIGHT + (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, (DISPLAY_WIDTH / 2) - 2, TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT - 2, BLACK);
+    drawText(text, DISPLAY_WIDTH - (DISPLAY_WIDTH / 4), TITLE_BAR_HEIGHT + (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, REGULAR_TEXT, CENTERED, WHITE);
     lastRenderedWeight = currentWeight;
   }
 }
@@ -279,7 +281,8 @@ void drawWeightPanel() {
 void drawFlowPanel() {
   if (currentFlow != lastRenderedFlow) {
     String text = getFlowText();
-    drawText(text, DISPLAY_WIDTH / 4, DISPLAY_HEIGHT - (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, REGULAR_TEXT, CENTERED, WHITE, true);
+    fillCenteredRect(DISPLAY_WIDTH / 4, DISPLAY_HEIGHT - (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, (DISPLAY_WIDTH / 2) - 2, TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT - 2, BLACK);
+    drawText(text, DISPLAY_WIDTH / 4, DISPLAY_HEIGHT - (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, REGULAR_TEXT, CENTERED, WHITE);
     lastRenderedFlow = currentFlow;
   }
 }
@@ -287,7 +290,8 @@ void drawFlowPanel() {
 void drawTemperaturePanel() {
   if (currentTemperature != lastRenderedTemperature) {
     String text = getTemperatureText();
-    drawText(text, DISPLAY_WIDTH - (DISPLAY_WIDTH / 4), DISPLAY_HEIGHT - (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, REGULAR_TEXT, CENTERED, WHITE, true);
+    fillCenteredRect(DISPLAY_WIDTH - (DISPLAY_WIDTH / 4), DISPLAY_HEIGHT - (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, (DISPLAY_WIDTH / 2) - 2, TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT - 2, BLACK);
+    drawText(text, DISPLAY_WIDTH - (DISPLAY_WIDTH / 4), DISPLAY_HEIGHT - (TOP_BAR_HEIGHT - TITLE_BAR_HEIGHT) / 2, REGULAR_TEXT, CENTERED, WHITE);
     lastRenderedTemperature = currentTemperature;
   }
 }
@@ -316,7 +320,11 @@ String getWeightText() {
   return String(text);
 }
 
-void drawText(const String &text, float x, float y, byte size, byte alignment, unsigned short color, bool background) {
+void fillCenteredRect(float x, float y, float width, float height, unsigned short color) {
+  display.fillRect(x - (width / 2), y - (height / 2), width, height, color);
+}
+
+void drawText(const String &text, float x, float y, byte size, byte alignment, unsigned short color) {
   int16_t x1, y1;
   uint16_t w, h;
   
@@ -327,24 +335,16 @@ void drawText(const String &text, float x, float y, byte size, byte alignment, u
   switch(alignment) {
     case 3: 
       // Centered
-      x1 = x - w / 2;
-      y1 = y - h / 2;
+      display.setCursor(x - w / 2, y - h / 2);
       break; 
     case 2: 
       // Right
-      x1 = x - w;
-      y1 = y;
+      display.setCursor(x - w, y);
       break;
     default: 
       // Left
-      x1 = x;
-      y1 = y;
+      display.setCursor(x, y);
   }
-
-  if (background) {
-    display.fillRect(x1, y1, w, h, BLACK);
-  }
-
-  display.setCursor(x1, y1);
+  
   display.print(text);
 }
