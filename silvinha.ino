@@ -1,5 +1,6 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7735.h>
+#include <max6675.h>
 #include <SPI.h>
 #include <Wire.h>
 
@@ -21,10 +22,13 @@
 #define CENTERED      3
 
 // Pins
-#define BUTTON_PIN  2
-#define TFT_DC_PIN  8
-#define TFT_RST_PIN 9
-#define TFT_CS_PIN  10
+#define BUTTON_PIN           2
+#define THERMOCOUPLE_CS_PIN  5
+#define THERMOCOUPLE_SCK_PIN 6
+#define THERMOCOUPLE_SO_PIN  7
+#define TFT_DC_PIN           8
+#define TFT_RST_PIN          9
+#define TFT_CS_PIN          10
 
 // Layout
 #define DISPLAY_WIDTH      128
@@ -41,6 +45,7 @@
  * * * * * * * * * * * * * * * * * * * * */
 
 Adafruit_ST7735 display = Adafruit_ST7735(TFT_CS_PIN, TFT_DC_PIN, TFT_RST_PIN);
+MAX6675 thermocouple(THERMOCOUPLE_SCK_PIN, THERMOCOUPLE_CS_PIN, THERMOCOUPLE_SO_PIN);
 
 unsigned long poweredAt = millis();
 unsigned long millisecondsSincePowered = 0;
@@ -251,7 +256,8 @@ void updateFlow() {
 }
 
 void updateTemperature() {
-  // TODO: read current temperature
+  currentTemperature = thermocouple.readCelsius();
+  Serial.println(currentTemperature);
 }
 
 void drawTimePanel() {
