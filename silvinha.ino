@@ -179,19 +179,23 @@ void loop() {
 void fastLoop() {
   if (running) {
     updateTime();
-    updateWeight();
-    updateFlow();
   }
 
   drawTimePanel();
-  drawWeightPanel();
-  drawFlowPanel();
     
   checkForActions();
 }
 
 void oneSecondLoop() {
+  if (running) {
+    updateWeight();
+    updateFlow();
+  }
+  
   updateTemperature();
+  
+  drawWeightPanel();
+  drawFlowPanel();
   drawTemperaturePanel();
 }
 
@@ -223,6 +227,7 @@ void buttonPressed() {
 
   running = !running;
 }
+
  
 /* * * * * * * * * * * * * * * * * * * * *
  *                                       *
@@ -236,11 +241,13 @@ void updateTime() {
 }
 
 void updateWeight() {
-  // TODO: read current weight
+  // TODO: read the actual weight
+  currentWeight += rand() % 3; 
 }
 
 void updateFlow() {
-  // TODO: calculate current flow
+  // TODO: calculate the actual flow
+  currentFlow = rand() % 3 + 1;
 }
 
 void updateTemperature() {
