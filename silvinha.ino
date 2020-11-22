@@ -23,6 +23,7 @@
 
 // Pins
 #define BUTTON_PIN           2
+#define WATER_SENSOR_PIN     3
 #define THERMOCOUPLE_CS_PIN  5
 #define THERMOCOUPLE_SCK_PIN 6
 #define THERMOCOUPLE_SO_PIN  7
@@ -78,6 +79,7 @@ byte minY = 0;
 byte maxY = 100;
 
 bool running = false;
+bool lowWaterLevel = false;
 
 byte numberOfItems = 0;
 
@@ -98,6 +100,7 @@ void setup() {
 
 void setupPins() {
   pinMode(BUTTON_PIN, INPUT);  
+  pinMode(WATER_SENSOR_PIN, INPUT);
 }
 
 void setupDisplay() {
@@ -119,10 +122,17 @@ void loop() {
 
   if (seconds > secondsSincePowered) {
     secondsSincePowered = seconds;
-    oneSecondLoop();
+
+    if (!lowWaterLevel) {
+      oneSecondLoop();
+    }
   }
 
-  fastLoop();
+  if (!lowWaterLevel) {
+    fastLoop();
+  }
+
+  checkForInputs();
 }
 
 void fastLoop() {
@@ -131,8 +141,6 @@ void fastLoop() {
   }
 
   drawTimePanel();
-  
-  checkForActions();
 }
 
 void oneSecondLoop() {
@@ -161,11 +169,40 @@ void oneSecondLoop() {
  *                                       *
  * * * * * * * * * * * * * * * * * * * * */
  
-void checkForActions() {
-  if (digitalRead(BUTTON_PIN) == HIGH) {
+void checkForInputs() {
+  bool currentWaterLevel = digitalRead(WATER_SENSOR_PIN) == LOW;
+
+  // Waits for the current brew to finish before displaying the water level warning
+  if (lowWaterLevel != currentWaterLevel && !running) {
+    toggleLowWaterLevel();
+    delay(500);
+  }
+
+  bool buttonPressed = digitalRead(BUTTON_PIN) == HIGH;
+
+  // Only allows to update running flag if the water level is fine
+  if (buttonPressed && !lowWaterLevel) {
     toggleRunning();
     delay(500);
   } 
+}
+
+void toggleLowWaterLevel() {
+  if (lowWaterLevel) {
+    resetPreviousRenderedValues();
+    drawLayout();
+  } else {
+    drawWaterLevelWarning();
+  }
+  
+  lowWaterLevel = !lowWaterLevel;
+}
+
+void resetPreviousRenderedValues() {
+  lastRenderedTime = -1;
+  lastRenderedWeight = -1;
+  lastRenderedFlow = -1;
+  lastRenderedTemperature = -1;
 }
 
 void toggleRunning() {
@@ -195,6 +232,9 @@ void toggleRunning() {
 void drawLayout() {
   float halfDisplayWidth = DISPLAY_WIDTH / 2;
 
+  // Background
+  display.fillRect(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT, BLACK);
+
   // Top bar
   drawPanel(0, 0, halfDisplayWidth, TOP_BAR_HEIGHT, "timer",  WHITE);
   drawPanel(halfDisplayWidth, 0, halfDisplayWidth, TOP_BAR_HEIGHT, "weight", YELLOW);
@@ -205,6 +245,11 @@ void drawLayout() {
   // Bottom bar
   drawPanel(0, DISPLAY_HEIGHT - BOTTOM_BAR_HEIGHT, halfDisplayWidth, BOTTOM_BAR_HEIGHT, "flow", CYAN);
   drawPanel(halfDisplayWidth, DISPLAY_HEIGHT - BOTTOM_BAR_HEIGHT, halfDisplayWidth, BOTTOM_BAR_HEIGHT, "temp", RED);
+}
+
+void drawWaterLevelWarning() {
+  display.fillRect(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT, RED);
+  drawText("LOW WATER", DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, REGULAR_TEXT, CENTERED, WHITE);
 }
 
 void drawPanel(float x, float y, float width, float height, String title, unsigned short color) {
