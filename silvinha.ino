@@ -104,8 +104,7 @@ void setup() {
   setupDisplay();
   setupCardReader();
   setupInitialState();
-  drawLayout();
-  plotPreviousBrewFromSD();
+  drawInitialState();
   delay(250);
 }
 
@@ -129,8 +128,6 @@ void setupCardReader() {
 
 void setupInitialState() {
   numberOfBrews = max(readIntFromEEPROM(NUMBER_OF_BREWS_ADDRESS), 0);
-  Serial.print("NUMBER OF BREWS: ");
-  Serial.println(numberOfBrews);
 }
 
 /* * * * * * * * * * * * * * * * * * * * *
@@ -140,6 +137,8 @@ void setupInitialState() {
  * * * * * * * * * * * * * * * * * * * * */
  
 void loop() {
+  checkForInputs();
+  
   millisecondsSincePowered = millis() - poweredAt;
   int seconds = millisecondsSincePowered / 1000;
 
@@ -154,8 +153,6 @@ void loop() {
   if (!lowWaterLevel) {
     fastLoop();
   }
-
-  checkForInputs();
 }
 
 void fastLoop() {
@@ -214,7 +211,7 @@ void checkForInputs() {
 void toggleLowWaterLevel() {
   if (lowWaterLevel) {
     resetPreviousRenderedValues();
-    drawLayout();
+    drawInitialState();
   } else {
     drawWaterLevelWarning();
   }
@@ -260,6 +257,11 @@ void toggleRunning() {
  *  UI Drawing                           *
  *                                       *
  * * * * * * * * * * * * * * * * * * * * */
+
+void drawInitialState() {
+  drawLayout();
+  plotPreviousBrewFromSD();
+}
  
 void drawLayout() {
   float halfDisplayWidth = DISPLAY_WIDTH / 2;
@@ -432,27 +434,31 @@ void plotPreviousBrewFromSD() {
 
 void plotBrewFromSD(int brewNumber) {
   String path = getBrewFileName(brewNumber);
+  byte seconds, temperature, flowRate, weight;
 
-  Serial.print("PATH: ");
-  Serial.println(path);
-  
   brewFile = SD.open(path);
-
+  
   while (brewFile.available()) {
-    byte seconds = brewFile.parseInt();
-    byte temperature = brewFile.parseInt();
-    byte flowRate = brewFile.parseInt();
-    byte weight = brewFile.parseInt();
+    seconds = brewFile.parseInt();
+    temperature = brewFile.parseInt();
+    flowRate = brewFile.parseInt();
+    weight = brewFile.parseInt();
 
-    plotItem(seconds, temperature, flowRate, weight);
+    // not proud, but this is to avoid the last line
+    if (seconds != 0 && temperature != 0 && flowRate != 0 && weight != 0) {
+      currentTime = seconds;
+      currentWeight = weight;
+       
+      plotItem(seconds, temperature, flowRate, weight);
+    }
   }
-
+  
   brewFile.close();
 }
 
  void clearGraph() {
   float graphHeight = DISPLAY_HEIGHT - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT;
-  display.fillRect(yAxisWidth, TOP_BAR_HEIGHT, DISPLAY_WIDTH - yAxisWidth - 1, graphHeight - xAxisHeight, BLACK);
+  display.fillRect(yAxisWidth, TOP_BAR_HEIGHT + 1, DISPLAY_WIDTH - yAxisWidth - 1, graphHeight - xAxisHeight - 1, BLACK);
 }
 
 void drawText(const String &text, float x, float y, byte size, byte alignment, unsigned short color) {
@@ -555,13 +561,11 @@ void writeItemToSD(byte seconds, byte temperature, byte flowRate, byte weight) {
   brewFile.println(text);
 }
 
-int readIntFromEEPROM(int address)
-{
+int readIntFromEEPROM(int address) {
   return (EEPROM.read(address) << 8) + EEPROM.read(address + 1);
 }
 
-void writeIntIntoEEPROM(int address, int number)
-{ 
+void writeIntIntoEEPROM(int address, int number) { 
   EEPROM.write(address, number >> 8);
   EEPROM.write(address + 1, number & 0xFF);
 }
