@@ -4,7 +4,6 @@
 #include <max6675.h>
 #include <SD.h>
 #include <SPI.h>
-#include <Wire.h>
 
 // Colors
 #define BLACK  0x0000
@@ -24,10 +23,10 @@
 #define CENTERED      3
 
 // Pins
-#define RIGHT_BUTTON_PIN     A0
-#define LEFT_BUTTON_PIN      A1
-#define BUZZER_PIN           A2
-#define BUTTON_PIN           2
+#define BUTTON_PIN           A0
+#define RIGHT_BUTTON_PIN     A1
+#define LEFT_BUTTON_PIN      A2
+#define BUZZER_PIN           A3
 #define WATER_SENSOR_PIN     3
 #define CARD_READER_CS_PIN   4
 #define THERMOCOUPLE_CS_PIN  5
@@ -59,25 +58,25 @@ MAX6675 thermocouple(THERMOCOUPLE_SCK_PIN, THERMOCOUPLE_CS_PIN, THERMOCOUPLE_SO_
 
 unsigned long poweredAt = millis();
 unsigned long millisecondsSincePowered = 0;
-int secondsSincePowered = 0;
+unsigned short secondsSincePowered = 0;
 
 unsigned long lastTimerUpdate = millis();
 unsigned long currentTimerUpdate;
 
-int currentTime = 0;
-int lastRenderedTime = -1;
+unsigned short currentTime = 0;
+short lastRenderedTime = -1;
 
-int currentWeight = 0;
-int lastRenderedWeight = -1;
-int lastPlottedWeight = -1;
+unsigned short currentWeight = 0;
+short lastRenderedWeight = -1;
+short lastPlottedWeight = -1;
 
-int currentFlow = 0;
-int lastRenderedFlow = -1;
-int lastPlottedFlow = -1;
+unsigned short currentFlow = 0;
+short lastRenderedFlow = -1;
+short lastPlottedFlow = -1;
 
-int currentTemperature = 0;
-int lastRenderedTemperature = -1;
-int lastPlottedTemperature = -1;
+unsigned short currentTemperature = 0;
+short lastRenderedTemperature = -1;
+short lastPlottedTemperature = -1;
 
 byte xAxisHeight = 0;
 byte minX = 0;
@@ -91,8 +90,8 @@ bool running = false;
 bool lowWaterLevel = false;
 bool loadingBrew = false;
 
-int numberOfBrews = 0;
-int currentBrew = -1;
+unsigned short numberOfBrews = 0;
+short currentBrew = -1;
 
 File brewFile;
 
@@ -104,7 +103,6 @@ File brewFile;
  * * * * * * * * * * * * * * * * * * * * */
  
 void setup() {
-  Serial.begin(9600);
   setupPins();
   setupDisplay();
   setupCardReader();
@@ -128,10 +126,7 @@ void setupDisplay() {
 }
 
 void setupCardReader() {
-  if (!SD.begin(CARD_READER_CS_PIN)) {
-    Serial.println("Card reader initialization failed!");
-    while (1);
-  }
+  SD.begin(CARD_READER_CS_PIN);
 }
 
 void setupInitialState() {
@@ -211,8 +206,6 @@ void checkForInputs() {
   bool leftButtonPressed = digitalRead(LEFT_BUTTON_PIN) == HIGH;
 
   if (leftButtonPressed && canNavigate) {
-    Serial.println("PREVIOUS BREW!");
-    
     int previousBrew = currentBrew - 1;
 
     if (previousBrew >= 0) {
@@ -227,8 +220,6 @@ void checkForInputs() {
   bool rightButtonPressed = digitalRead(RIGHT_BUTTON_PIN) == HIGH;
 
   if (rightButtonPressed && canNavigate) {
-    Serial.println("NEXT BREW!");
-
     int nextBrew = currentBrew + 1;
 
     if (nextBrew < numberOfBrews) {
@@ -276,8 +267,6 @@ void resetPreviousRenderedValues() {
 }
 
 void toggleRunning() {
-  buzz();
-  
   if (!running) {
     String path = getBrewFileName(numberOfBrews);
     brewFile = SD.open(path, FILE_WRITE);
@@ -301,6 +290,7 @@ void toggleRunning() {
   }
 
   running = !running;
+  buzz();
 }
 
 
@@ -317,7 +307,7 @@ void drawInitialState() {
 }
  
 void drawLayout() {
-  float halfDisplayWidth = DISPLAY_WIDTH / 2;
+  byte halfDisplayWidth = DISPLAY_WIDTH / 2;
 
   // Background
   display.fillRect(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT, BLACK);
@@ -339,13 +329,13 @@ void drawWaterLevelWarning() {
   drawText("LOW WATER", DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, REGULAR_TEXT, CENTERED, WHITE);
 }
 
-void drawPanel(float x, float y, float width, float height, String title, unsigned short color) {
+void drawPanel(byte x, byte y, byte width, byte height, String title, unsigned short color) {
   display.drawRect(x, y, width, height, color);
   display.fillRect(x, y, width, TITLE_BAR_HEIGHT, color);
   drawText(title, x + (width / 2), y + (TITLE_BAR_HEIGHT / 2), SMALL_TEXT, CENTERED, BLACK);
 }
 
-void drawGraph(float x, float y, float width, float height, unsigned short color) {
+void drawGraph(byte x, byte y, byte width, byte height, unsigned short color) {
   uint16_t textWidth, textHeight;
   byte labelPadding = 1;
 
@@ -421,7 +411,7 @@ void drawTemperaturePanel() {
   }
 }
 
-void fillCenteredRect(float x, float y, float width, float height, unsigned short color) {
+void fillCenteredRect(byte x, byte y, byte width, byte height, unsigned short color) {
   display.fillRect(x - (width / 2), y - (height / 2), width, height, color);
 }
 
@@ -434,9 +424,9 @@ void plotItem(byte seconds, byte temperature, byte flowRate, byte weight) {
 void plotTemperature(byte seconds, byte value) {
   if (seconds > 0) {
     byte x1 = seconds - 1;
-    float y1 = lastPlottedTemperature;
+    byte y1 = lastPlottedTemperature;
     byte x2 = seconds;
-    float y2 = value;
+    byte y2 = value;
     plotData(x1, y1, x2, y2, RED);
   }
 
@@ -446,9 +436,9 @@ void plotTemperature(byte seconds, byte value) {
 void plotFlowRate(byte seconds, byte value) {
   if (seconds > 0) {
     byte x1 = seconds - 1;
-    float y1 = lastPlottedFlow * 10;
+    byte y1 = lastPlottedFlow * 10;
     byte x2 = seconds;
-    float y2 = value * 10;
+    byte y2 = value * 10;
     plotData(x1, y1, x2, y2, CYAN);
   }
 
@@ -458,21 +448,21 @@ void plotFlowRate(byte seconds, byte value) {
 void plotWeight(byte seconds, byte value) {
   if (seconds > 0) {
     byte x1 = seconds - 1;
-    float y1 = lastPlottedWeight;
+    byte y1 = lastPlottedWeight;
     byte x2 = seconds;
-    float y2 = value;
+    byte y2 = value;
     plotData(x1, y1, x2, y2, YELLOW);
   }
 
   lastPlottedWeight = value;
 }
 
-void plotData(float x1, float y1, float x2, float y2, int color) {
-  float px =  graphXtoScreenX(x1);
-  float py =  graphYtoScreenY(y1);
+void plotData(byte x1, byte y1, byte x2, byte y2, int color) {
+  byte px =  graphXtoScreenX(x1);
+  byte py =  graphYtoScreenY(y1);
   
-  float x =  graphXtoScreenX(x2);
-  float y =  graphYtoScreenY(y2);
+  byte x =  graphXtoScreenX(x2);
+  byte y =  graphYtoScreenY(y2);
   
   display.drawLine(px, py, x, y, color);
   display.drawLine(px, py - 1, x, y - 1, color);
@@ -512,11 +502,11 @@ void plotBrewFromSD(int brewNumber) {
 }
 
  void clearGraph() {
-  float graphHeight = DISPLAY_HEIGHT - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT;
+  byte graphHeight = DISPLAY_HEIGHT - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT;
   display.fillRect(yAxisWidth, TOP_BAR_HEIGHT + 1, DISPLAY_WIDTH - yAxisWidth - 1, graphHeight - xAxisHeight - 1, BLACK);
 }
 
-void drawText(const String &text, float x, float y, byte size, byte alignment, unsigned short color) {
+void drawText(const String &text, byte x, byte y, byte size, byte alignment, unsigned short color) {
   int16_t x1, y1;
   uint16_t w, h;
   
@@ -597,17 +587,30 @@ String getBrewFileName(int brewNumber) {
   return String(text);
 }
 
-double graphXtoScreenX(double x) {
-  float graphWidth = DISPLAY_WIDTH;
-  float plottingWidth = graphWidth - yAxisWidth - 2;
+byte graphXtoScreenX(byte x) {
+  byte graphWidth = DISPLAY_WIDTH;
+  byte plottingWidth = graphWidth - yAxisWidth - 2;
   return ((x - minY) * (plottingWidth) / (maxX - minX)) + yAxisWidth;
 }
 
-double graphYtoScreenY(double y) {
-  float graphHeight = DISPLAY_HEIGHT - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT;
-  float graphY = DISPLAY_HEIGHT - BOTTOM_BAR_HEIGHT;
-  float plottingHeight = (graphHeight - xAxisHeight - 2);
-  return ((y - minY) * (graphY - plottingHeight - graphY) / (maxY - minY) + graphY) - xAxisHeight - 2;
+byte graphYtoScreenY(byte y) {
+  byte graphHeight = DISPLAY_HEIGHT - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT;
+  byte graphY = DISPLAY_HEIGHT - BOTTOM_BAR_HEIGHT;
+  byte plottingHeight = (graphHeight - xAxisHeight - 2);
+  byte result = ((y - minY) * (graphY - plottingHeight - graphY) / (maxY - minY) + graphY) - xAxisHeight - 2;
+  byte bottomLimit = graphY - xAxisHeight;
+  byte topLimit = graphY - graphHeight;
+
+  if (result < topLimit) {
+    return topLimit;
+    
+  } else if (result > bottomLimit) {
+    return bottomLimit;
+    
+  } else {
+    return result;
+    
+  }
 }
 
 void writeItemToSD(byte seconds, byte temperature, byte flowRate, byte weight) {
