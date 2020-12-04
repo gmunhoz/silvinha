@@ -24,6 +24,7 @@
 #define CENTERED      3
 
 // Pins
+#define BUZZER_PIN           A2
 #define BUTTON_PIN           2
 #define WATER_SENSOR_PIN     3
 #define CARD_READER_CS_PIN   4
@@ -32,7 +33,7 @@
 #define THERMOCOUPLE_SO_PIN  7
 #define TFT_DC_PIN           8
 #define TFT_RST_PIN          9
-#define TFT_CS_PIN          10
+#define TFT_CS_PIN           10
 
 // Layout
 #define DISPLAY_WIDTH      128
@@ -109,7 +110,8 @@ void setup() {
 }
 
 void setupPins() {
-  pinMode(BUTTON_PIN, INPUT);  
+  pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT);
   pinMode(WATER_SENSOR_PIN, INPUT);
 }
 
@@ -147,7 +149,10 @@ void loop() {
 
     if (!lowWaterLevel) {
       oneSecondLoop();
+    } else {
+      buzz();
     }
+    
   }
 
   if (!lowWaterLevel) {
@@ -191,13 +196,13 @@ void oneSecondLoop() {
  * * * * * * * * * * * * * * * * * * * * */
  
 void checkForInputs() {
-//  bool currentWaterLevel = digitalRead(WATER_SENSOR_PIN) == LOW;
-//
-//  // Waits for the current brew to finish before displaying the water level warning
-//  if (lowWaterLevel != currentWaterLevel && !running) {
-//    toggleLowWaterLevel();
-//    delay(500);
-//  }
+  bool currentWaterLevel = digitalRead(WATER_SENSOR_PIN) == LOW;
+
+  // Waits for the current brew to finish before displaying the water level warning
+  if (lowWaterLevel != currentWaterLevel && !running) {
+    toggleLowWaterLevel();
+    delay(500);
+  }
 
   bool buttonPressed = digitalRead(BUTTON_PIN) == HIGH;
 
@@ -227,6 +232,8 @@ void resetPreviousRenderedValues() {
 }
 
 void toggleRunning() {
+  buzz();
+  
   if (!running) {
     String path = getBrewFileName(numberOfBrews);
     brewFile = SD.open(path, FILE_WRITE);
@@ -568,4 +575,10 @@ int readIntFromEEPROM(int address) {
 void writeIntIntoEEPROM(int address, int number) { 
   EEPROM.write(address, number >> 8);
   EEPROM.write(address + 1, number & 0xFF);
+}
+
+void buzz() {
+  digitalWrite(BUZZER_PIN, HIGH);
+  delay(25);
+  digitalWrite(BUZZER_PIN, LOW);
 }
