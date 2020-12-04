@@ -24,6 +24,8 @@
 #define CENTERED      3
 
 // Pins
+#define RIGHT_BUTTON_PIN     A0
+#define LEFT_BUTTON_PIN      A1
 #define BUZZER_PIN           A2
 #define BUTTON_PIN           2
 #define WATER_SENSOR_PIN     3
@@ -87,8 +89,10 @@ byte maxY = 100;
 
 bool running = false;
 bool lowWaterLevel = false;
+bool loadingBrew = false;
 
 int numberOfBrews = 0;
+int currentBrew = -1;
 
 File brewFile;
 
@@ -111,7 +115,9 @@ void setup() {
 
 void setupPins() {
   pinMode(BUZZER_PIN, OUTPUT);
-  pinMode(BUTTON_PIN, INPUT);
+  pinMode(BUTTON_PIN, INPUT);  
+  pinMode(RIGHT_BUTTON_PIN, INPUT);
+  pinMode(LEFT_BUTTON_PIN, INPUT);
   pinMode(WATER_SENSOR_PIN, INPUT);
 }
 
@@ -194,15 +200,53 @@ void oneSecondLoop() {
  *  EVENTS                               *
  *                                       *
  * * * * * * * * * * * * * * * * * * * * */
- 
-void checkForInputs() {
-  bool currentWaterLevel = digitalRead(WATER_SENSOR_PIN) == LOW;
 
-  // Waits for the current brew to finish before displaying the water level warning
-  if (lowWaterLevel != currentWaterLevel && !running) {
-    toggleLowWaterLevel();
+bool canNavigateBetweenBrews() {
+  return !running && !lowWaterLevel && !loadingBrew;
+}
+
+void checkForInputs() {
+  bool canNavigate = canNavigateBetweenBrews();
+  
+  bool leftButtonPressed = digitalRead(LEFT_BUTTON_PIN) == HIGH;
+
+  if (leftButtonPressed && canNavigate) {
+    Serial.println("PREVIOUS BREW!");
+    
+    int previousBrew = currentBrew - 1;
+
+    if (previousBrew >= 0) {
+      buzz();
+      clearGraph();
+      plotBrewFromSD(previousBrew);
+    }
+    
     delay(500);
   }
+
+  bool rightButtonPressed = digitalRead(RIGHT_BUTTON_PIN) == HIGH;
+
+  if (rightButtonPressed && canNavigate) {
+    Serial.println("NEXT BREW!");
+
+    int nextBrew = currentBrew + 1;
+
+    if (nextBrew < numberOfBrews) {
+      buzz();
+      clearGraph();
+      plotBrewFromSD(nextBrew);
+    }
+    
+    delay(500);
+  }
+  
+//  bool currentWaterLevel = digitalRead(WATER_SENSOR_PIN) == LOW;
+//
+//  // Waits for the current brew to finish before displaying the water level warning
+//  if (lowWaterLevel != currentWaterLevel && !running) {
+//    toggleLowWaterLevel();
+//    delay(500);
+//  }
 
   bool buttonPressed = digitalRead(BUTTON_PIN) == HIGH;
 
@@ -249,6 +293,8 @@ void toggleRunning() {
     
   } else {
     brewFile.close();
+    
+    currentBrew = numberOfBrews;
 
     numberOfBrews++;
     writeIntIntoEEPROM(NUMBER_OF_BREWS_ADDRESS, numberOfBrews);
@@ -442,7 +488,7 @@ void plotPreviousBrewFromSD() {
 void plotBrewFromSD(int brewNumber) {
   String path = getBrewFileName(brewNumber);
   byte seconds, temperature, flowRate, weight;
-
+  
   brewFile = SD.open(path);
   
   while (brewFile.available()) {
@@ -461,6 +507,8 @@ void plotBrewFromSD(int brewNumber) {
   }
   
   brewFile.close();
+
+  currentBrew = brewNumber;
 }
 
  void clearGraph() {
