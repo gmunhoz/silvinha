@@ -488,7 +488,7 @@ void plotBrewFromSD(int brewNumber) {
     weight = brewFile.parseInt();
 
     // not proud, but this is to avoid the last line
-    if (seconds != 0 && temperature != 0 && flowRate != 0 && weight != 0) {
+    if (seconds != 0 || temperature != 0 || flowRate != 0 || weight != 0) {
       currentTime = seconds;
       currentWeight = weight;
        
